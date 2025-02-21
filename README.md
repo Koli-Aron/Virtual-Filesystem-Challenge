@@ -73,3 +73,4 @@ The fact that the filestate is stored in a PNG is likely not very efficient for 
 4. Absolute and relative paths have not been implemented for _remove_file_ and _remove_dir_.
 5. Although I'm not entirely certain, I assume it might technically be possible to find a lost file state from the meta data of the PNG, and so the password system is not infallible. However, it does at least provide an extra layer of protection.
 6. The password and encyption systems have not been tested with edge cases due to time constraints. However, the password itself is not executed as code, so injection does not seem like a real concern.
+7. I entirely forgot that you can implement an End-of-file (EOF) feature in CMD, so currently the only way to save the program is by calling exit.
