@@ -8,7 +8,8 @@ class FS_interface(cmd.Cmd):
 
     def __init__(self):
         super().__init__()
-        self.fs = VirtualFileSystem() # Creates the Filesystem object.
+        password = input("Enter the password: ")
+        self.fs = VirtualFileSystem(password) # Creates the Filesystem object.
         self.update_prompt()
 
     def update_prompt(self):
@@ -77,6 +78,8 @@ class FS_interface(cmd.Cmd):
         print("     ls - List all children of the current directory.")
         print("     mkdir <dir_name/path> - Create a new directory.")
         print("     mkfile <file_name/path> - Create a new file.")
+        print("     readfile <file_name> - Read the contents of a file.")
+        print("     writefile <file_name> - Write to a file.")
         print("     rmdir <file_name> - Removes a directory and all subdirectories.")
         print("     rmfile <file_name> - Removes a file.")
         print("     quickaccess - Open the quicksearch interface.")

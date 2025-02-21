@@ -1,30 +1,29 @@
----
-title: "Virtual File System with image encryption"
-description: "A virtual filesystem interface"
-author: "Aron Koli"
-date: "2025-02-21"
----
 
-# Virtual Database
+# Virtual File System with image encryption
 
 ## Overview
-This project implements a virtual filesystem interface that allows users to create, read, update, and delete files and directories. The state of the filesystem is saved and loaded from a PNG image.
+You've been infiltrated!
+
+Is what I probably would say, assuming that you downloaded the contents of this repository, ran the FS_interface.py program, and it actually had control over the files on your computer. Close enough, though.
+This project aims to implement a virtual filesystem allowing a user to create, read, update and delete files and directories. When the user exits the filesystem, the current state is encypted and saved in _puppy_picture.png_. In this way, the project emulates the rudimentary parts of a trojan program, and uses steganography to hide changes to the disk.
 
 ## Features
 - Create and remove directories
 - Create and remove files
 - Read and write file contents
 - Navigate through directories
-- Quick access to the most visited directories
+- Quick access to show the five most visited directories (with a cool formula for calculating directory popularity)
+- Load the previous state when starting the program, and save it when exiting
+- Test the program with some unit tests in _test_virtualfilesystem.py_.
 
-## Installation
+## Installationhttps://github.com/Koli-Aron/Virtual-Filesystem-Challenge/blob/master/README.md
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/virtual-database.git
+    git clone https://github.com/Koli-Aron/Virtual-Filesystem-Challenge.git
     ```
 2. Navigate to the project directory:
     ```sh
-    cd virtual-database
+    cd Virtual-Filesystem-Challenge
     ```
 3. Install the required dependencies:
     ```sh
@@ -37,19 +36,34 @@ This project implements a virtual filesystem interface that allows users to crea
     python FS_interface.py
     ```
 2. Use the following commands within the interface:
-    - `cd <dir_name/path>`: Change the current directory.
+    - `cd <dir_name/path>`: Change the current directory. Use cd .. to move backwards.
     - `ls`: List all children of the current directory.
     - `mkdir <dir_name/path>`: Create a new directory.
     - `mkfile <file_name/path>`: Create a new file.
-    - `rmdir <file_name>`: Remove a directory and all subdirectories.
-    - `rmfile <file_name>`: Remove a file.
     - `readfile <file_name>`: Read the contents of a file.
     - `writefile <file_name>`: Write to a file.
+    - `rmdir <file_name>`: Remove a directory and all subdirectories.
+    - `rmfile <file_name>`: Remove a file.
     - `quickaccess`: Open the quicksearch interface.
-    - `exit`: Exit the interface.
+    - `exit`: Exit the interface. Also saves the state.
 
-## Contributing
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
+## Creative Features
 
-## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+These are some of my creative approaches to this task:
+- `Steganography`: The filestate is saved and hidden in the metadata of a PNG file given in the repository (as inspired by Mitre: _https://attack.mitre.org/techniques/T1564/005/_). When viewing the picture, it is just a cute puppy!
+- `Quickaccess`: Inspired by the Windows File Explorer feature of the same name, quickaccess lists the five most popular directories in the filestate (with popularity being calculated with a rather sophisticated formula). The user can enter the number of the listed directory, and quickly be taken there.
+- `Relative and absolute paths`: The user can navigate the filesystem as well as create files and directories by inputting relative paths (this/is/a/test) and absolute paths (/this/is/a/test).
+-`Password`: When attempting to read data from the image, the program asks for a password. The password functions as the encryption key. If the correct key is provided, the state is loaded. If an incorrect key is provided, an entirely new state is created and the old one is lost. This way, only the creator of the state can reinitialize it.
+
+## API approach
+
+The API uses four distinct classes. First is the _FileSystemObject_, which only has a name, parent, and time of creation. It has two subclasses, _File_ and _Directory_. Files can store written user data, and can be read. Directories can have children (which can be files or subdirectories), and store the number of visits.
+The API follows the basic principles of a Unix-type interface, which commands such as _cd_ and _ls_.
+The intent is for the filesystem itself to be entirely memory-resident, with the filestate being stored in a PNG file to evade detection from antivirus programs. It was out of the scope of this project to test whether the program is any good at this, but this was meant more to show the principle anyway.
+The fact that the filestate is stored in a PNG is likely not very efficient for larger filesystems, but works fine for what was intended here (immitating steganography). Additionally, the currently implemented stress test in __test_virtualfilesystem.py__ seems to indicate that it works well enough.
+
+## Known limitations & areas for improvement.
+1. Although storing the filestate in a PNG helps evade detection, placing a picture of a dog in the same directory as the program probably isn't very inconspicuous. Placing the PNG in a more discrete location, or somewhere where it likely wont be noticed among other images would likely fly under the radar better.
+2. Adding flags would allow for more precise operations. For instance, _remove_dir_ currently removes all descendents of the directory. This is usually only achieved with a flag in command prompt.
+3. There are some issues with user experience. For instance, when writing a file, the user can currently input file content for a file that doesn't exist. The user is only be informed of the files non-existence after inputting the content.
+4. Absolute and relative paths have not been implemented for _remove_file_ and _remove_dir_.

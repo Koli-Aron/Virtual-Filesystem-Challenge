@@ -5,7 +5,7 @@ from VirtualFileSystem import VirtualFileSystem, Directory, File
 
 class TestFS(unittest.TestCase):
     def setUp(self):
-        self.fs = VirtualFileSystem()
+        self.fs = VirtualFileSystem("test_password")
 
     def test_make_dir(self):
         self.fs.make_dir("test_dir")
@@ -72,10 +72,18 @@ class TestFS(unittest.TestCase):
         """
         Stress test quickaccess by adding 1000 directories and files.
         """
-        for i in range(1000):
+        for i in range(10000):
             self.fs.make_dir(f"dir_{i}")
             self.fs.make_file(f"file_{i}")
         self.fs.ls()
+        self.fs.save_state()
+        self.fs.load_state()
+        self.fs.ls()
+        self.assertIn("dir_999", self.fs.current_dir.children)
+        for i in range(10000):
+            self.fs.remove_dir(f"dir_{i}")
+            self.fs.remove_file(f"file_{i}")
+        self.fs.save_state()
         self.fs.quickaccess()
 
 

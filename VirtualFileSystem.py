@@ -3,7 +3,11 @@ import math
 import json
 import base64
 from PIL import Image, PngImagePlugin
-import numpy as np
+from cryptography.fernet import Fernet, InvalidToken
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+import os
 
 class FileSystemObject:
     """
@@ -66,12 +70,27 @@ class VirtualFileSystem:
     """
     Initializes a system which can hold a structure of files and directories.
     """
-    def __init__(self, file="FS_state.json"):
-        self.state_file = file
+    def __init__(self, password: str):
         self.root = Directory("/", None, self)
         self.current_dir = self.root
-        self.load_state()
+        self.encrypt_key = self.derive_key_from_password(password) # Derive a key from the password
+        self.cipher = Fernet(self.encrypt_key) # Create a Fernet cipher object.
+        self.load_state() # Load the previous state of the filesystem.
         
+    def derive_key_from_password(self, password: str) -> bytes:
+        """
+        Derives a key from the given password using PBKDF2.
+        """
+        salt = b'\x00' * 16  # Use a fixed salt for consistency
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+            backend=default_backend()
+        )
+        return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+
     def make_dir(self, path) -> None:
         """
         Creates a new directory. Supports relative and absolute paths.
@@ -136,7 +155,7 @@ class VirtualFileSystem:
         if name in self.current_dir.children:
             if isinstance(self.current_dir.children[name], File):
                 del self.current_dir.children[name]
-                print(f"Removes the file '{name}'.")
+                print(f"Removed the file '{name}'.")
             else:
                 print(f"'{name}' is not a file.")
         else:
@@ -223,16 +242,17 @@ class VirtualFileSystem:
         """
         Saves the state of the filesystem.
         """
-        current_state = self.serialize_directory(self.root)
-        json_form = json.dumps(current_state)
-        byte_form = json_form.encode('utf-8')
+        current_state = self.serialize_directory(self.root) # Serialize the root directory.
+        json_data = json.dumps(current_state) # Convert the dictionary to a json string.
+        encrypted_data = self.cipher.encrypt(json_data.encode('utf-8')) # Encrypt the json string in utf8 byte form.
 
         puppy_picture = Image.open("puppy_picture.png")
-        meta = PngImagePlugin.PngInfo()
+        meta = PngImagePlugin.PngInfo() # Create a metadata object.
 
-        meta.add_text("vfs_state", byte_form.decode('latin1'))
+        meta.add_text("vfs_state", encrypted_data.decode('latin1')) # Add the encrypted data to the metadata.
 
-        puppy_picture.save("puppy_picture.png", "PNG", pnginfo=meta)
+        puppy_picture.save("puppy_picture.png", "PNG", pnginfo=meta) # Save metadata within the image.
+    
     
     def load_state(self) -> None:
         """
@@ -242,28 +262,31 @@ class VirtualFileSystem:
         """
         try:
             puppy_picture = Image.open("puppy_picture.png") # Open the image.
-            byte_form = puppy_picture.info.get("vfs_state", None) # Get the 'vfs_state' metadata.
-            if byte_form is None:
+            encrypted_data = puppy_picture.info.get("vfs_state", None) # Get the 'vfs_state' metadata.
+            if encrypted_data is None:
                 raise FileNotFoundError("No state found.") # If no metadata is found, raise an error.
             
-            json_form = byte_form.encode('latin1').decode('utf-8') # Convert the metadata to a json string.
-            system_state = json.loads(json_form) # Load the json string to a dictionary.
+            try:
+                decrypted_data = self.cipher.decrypt(encrypted_data.encode('latin1')) # Try to decrypt the data.
+            except InvalidToken:
+                # If decryption fails, assume the data is unencrypted and decode it directly
+                decrypted_data = encrypted_data.encode('latin1')
+            
+            system_state = json.loads(decrypted_data) # Load the json string to a dictionary.
             
             self.root = self.deserialize_directory(system_state, None) # Deserialize the dictionary to a directory.
             self.current_dir = self.root # Set the root as current directory.
         except FileNotFoundError: # If no state is found, initialize a new filesystem.
-            print("No previous state was found. Initializing a new filesystem.")
             self.root = Directory("/", None, self)
             self.current_dir = self.root
         except json.JSONDecodeError: # If the json is corrupted, initialize a new filesystem.
-            print("The previous state file is corrupted. Initializing a new filesystem.")
             self.root = Directory("/", None, self)
             self.current_dir = self.root
         except KeyError as e: # If a key error occurs, the state is corrupted. Initialize a new filesystem.
-            print(f"KeyError during state loading: {e}")
-            print("The previous state file is unusable. Initializing a new filesystem.")
             self.root = Directory("/", None, self)
             self.current_dir = self.root
+
+
 
     def serialize_directory(self, directory) -> dict:
         """
